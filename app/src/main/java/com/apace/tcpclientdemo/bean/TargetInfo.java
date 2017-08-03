@@ -1,5 +1,9 @@
 package com.apace.tcpclientdemo.bean;
 
+/**
+ * Created by Administrator at 2017/8/3
+ * Description: 发送的源的IP,端口
+ */
 public class TargetInfo {
     private String ip;
     private int port;

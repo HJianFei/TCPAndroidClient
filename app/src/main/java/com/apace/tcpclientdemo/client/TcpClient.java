@@ -24,9 +24,9 @@ import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
- * Created by Administrator on 2017/8/2.
+ * Created by Administrator at 2017/8/3
+ * Description: TCP客户端
  */
-
 public class TcpClient {
 
     private static final String TAG = "onResponse";
@@ -45,7 +45,7 @@ public class TcpClient {
     }
 
     /**
-     * 创建tcp连接，需要提供服务器信息
+     * 创建TCP客户端
      *
      * @param targetInfo
      * @return
@@ -54,6 +54,13 @@ public class TcpClient {
         return getTcpClient(targetInfo, null);
     }
 
+    /**
+     * 获取TCP客户端
+     *
+     * @param targetInfo
+     * @param tcpConnConfig
+     * @return
+     */
     public static TcpClient getTcpClient(TargetInfo targetInfo, TcpConnConfig tcpConnConfig) {
         TcpClient mTcpClient = TcpClientManager.getTcpClient(targetInfo);
         if (mTcpClient == null) {
@@ -65,16 +72,13 @@ public class TcpClient {
     }
 
     /**
-     * 根据socket创建client端，目前仅用在socketServer接受client之后
+     * 创建TCP客户端
      *
      * @param socket
+     * @param targetInfo
+     * @param connConfig
      * @return
      */
-    public static TcpClient getTcpClient(Socket socket, TargetInfo targetInfo) {
-        return getTcpClient(socket, targetInfo, null);
-    }
-
-
     public static TcpClient getTcpClient(Socket socket, TargetInfo targetInfo, TcpConnConfig connConfig) {
         if (!socket.isConnected()) {
             Log.d("onResponse", "socket is closeed");
@@ -87,6 +91,12 @@ public class TcpClient {
         return mTcpClient;
     }
 
+    /**
+     * TCP客户端初始化
+     *
+     * @param targetInfo
+     * @param connConfig
+     */
     private void init(TargetInfo targetInfo, TcpConnConfig connConfig) {
         this.mTargetInfo = targetInfo;
         mClientState = ClientState.Disconnected;
@@ -98,21 +108,45 @@ public class TcpClient {
         }
     }
 
+    /**
+     * 发送数据
+     *
+     * @param message（字符串）
+     * @return
+     */
     public synchronized TcpMsg sendMsg(String message) {
         TcpMsg msg = new TcpMsg(message, mTargetInfo, TcpMsg.MsgType.Send);
         return sendMsg(msg);
     }
 
+    /**
+     * 发送数据（字节）
+     *
+     * @param message
+     * @return
+     */
     public synchronized TcpMsg sendMsg(byte[] message) {
         TcpMsg msg = new TcpMsg(message, mTargetInfo, TcpMsg.MsgType.Send);
         return sendMsg(msg);
     }
 
+    /**
+     * 发送数据（文件）
+     *
+     * @param file
+     * @return
+     */
     public synchronized TcpMsg sendMsg(File file) {
         TcpMsg msg = new TcpMsg(file, mTargetInfo, TcpMsg.MsgType.Send);
         return sendMsg(msg);
     }
 
+    /**
+     * 发送数据
+     *
+     * @param msg
+     * @return
+     */
     public synchronized TcpMsg sendMsg(TcpMsg msg) {
         if (isDisconnected()) {
             Log.d(TAG, "发送消息 " + msg + "，当前没有tcp连接，先进行连接");
@@ -125,6 +159,9 @@ public class TcpClient {
         return null;
     }
 
+    /**
+     * TCP连接服务器
+     */
     public synchronized void connect() {
         if (!isDisconnected()) {
             Log.d(TAG, "已经连接了或正在连接");
@@ -135,6 +172,11 @@ public class TcpClient {
         getConnectionThread().start();
     }
 
+    /**
+     * 获取一个Socket实例
+     *
+     * @return
+     */
     public synchronized Socket getSocket() {
         if (mSocket == null || isDisconnected() || !mSocket.isConnected()) {
             mSocket = new Socket();
@@ -147,11 +189,20 @@ public class TcpClient {
         return mSocket;
     }
 
+    /**
+     * 断开连接
+     */
     public synchronized void disconnect() {
         disconnect("手动关闭tcpclient", null);
     }
 
 
+    /**
+     * 系统出错，断开连接
+     *
+     * @param msg
+     * @param e
+     */
     protected synchronized void onErrorDisConnect(String msg, Exception e) {
         if (isDisconnected()) {
             return;
@@ -162,6 +213,12 @@ public class TcpClient {
         }
     }
 
+    /**
+     * 断开连接
+     *
+     * @param msg
+     * @param e
+     */
     protected synchronized void disconnect(String msg, Exception e) {
         if (isDisconnected()) {
             return;
@@ -172,8 +229,14 @@ public class TcpClient {
         getReceiveThread().interrupt();
         setClientState(ClientState.Disconnected);
         notifyDisconnected(msg, e);
+        Log.d(TAG, "tcp closed");
     }
 
+    /**
+     * 关闭Socket
+     *
+     * @return
+     */
     private synchronized boolean closeSocket() {
         if (mSocket != null) {
             try {
@@ -185,16 +248,18 @@ public class TcpClient {
         return true;
     }
 
-    //连接已经连接，接下来的流程，创建发送和接受消息的线程
+    /**
+     * 连接已经连接，接下来的流程，创建发送和接受消息的线程
+     */
     private void onConnectSuccess() {
 
         setClientState(ClientState.Connected);//标记为已连接
-        getSendThread().start();
-        getReceiveThread().start();
+        getSendThread().start();//发送线程
+        getReceiveThread().start();//接收线程
     }
 
     /**
-     * tcp连接线程
+     * TCP连接线程
      */
     private class ConnectionThread extends Thread {
         @Override
@@ -219,6 +284,12 @@ public class TcpClient {
         }
     }
 
+    /**
+     * 把需要发送的消息put进消息发送队列
+     *
+     * @param tcpMsg
+     * @return
+     */
     public boolean enqueueTcpMsg(final TcpMsg tcpMsg) {
         if (tcpMsg == null || getMsgQueue().contains(tcpMsg)) {
             return false;
@@ -240,6 +311,9 @@ public class TcpClient {
     }
 
 
+    /**
+     * 消息发送线程
+     */
     private class SendThread extends Thread {
         private TcpMsg sendingTcpMsg;
         private FileInputStream fis;
@@ -320,6 +394,9 @@ public class TcpClient {
         }
     }
 
+    /**
+     * 消息接收线程
+     */
     private class ReceiveThread extends Thread {
         @Override
         public void run() {
@@ -345,6 +422,11 @@ public class TcpClient {
         }
     }
 
+    /**
+     * 获取消息接收线程
+     *
+     * @return
+     */
     protected ReceiveThread getReceiveThread() {
         if (mReceiveThread == null || !mReceiveThread.isAlive()) {
             mReceiveThread = new ReceiveThread();
@@ -352,6 +434,11 @@ public class TcpClient {
         return mReceiveThread;
     }
 
+    /**
+     * 获取消息发送线程
+     *
+     * @return
+     */
     protected SendThread getSendThread() {
         if (mSendThread == null || !mSendThread.isAlive()) {
             mSendThread = new SendThread();
@@ -359,6 +446,11 @@ public class TcpClient {
         return mSendThread;
     }
 
+    /**
+     * 获取连接线程
+     *
+     * @return
+     */
     protected ConnectionThread getConnectionThread() {
         if (mConnectionThread == null || !mConnectionThread.isAlive() || mConnectionThread.isInterrupted()) {
             mConnectionThread = new ConnectionThread();
@@ -366,16 +458,31 @@ public class TcpClient {
         return mConnectionThread;
     }
 
+    /**
+     * 判断Socket的连接状态
+     *
+     * @return
+     */
     public ClientState getClientState() {
         return mClientState;
     }
 
+    /**
+     * 设置Socket的连接状态
+     *
+     * @param state
+     */
     protected void setClientState(ClientState state) {
         if (mClientState != state) {
             mClientState = state;
         }
     }
 
+    /**
+     * 判断是否断开连接
+     *
+     * @return
+     */
     public boolean isDisconnected() {
         return getClientState() == ClientState.Disconnected;
     }
@@ -394,10 +501,6 @@ public class TcpClient {
     }
 
     private void notifyDisconnected(final String msg, final Exception e) {
-        for (TcpClientListener l : mTcpClientListeners) {
-            l.onDisconnected(TcpClient.this, msg, e);
-
-        }
 
     }
 
@@ -418,6 +521,7 @@ public class TcpClient {
 
     }
 
+
     public TargetInfo getTargetInfo() {
         return mTargetInfo;
     }
@@ -435,12 +539,5 @@ public class TcpClient {
 
     public void config(TcpConnConfig tcpConnConfig) {
         mTcpConnConfig = tcpConnConfig;
-    }
-
-    @Override
-    public String toString() {
-        return "XTcpClient{" +
-                "mTargetInfo=" + mTargetInfo + ",state=" + mClientState + ",isconnect=" + isConnected() +
-                '}';
     }
 }

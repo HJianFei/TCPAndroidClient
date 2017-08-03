@@ -6,6 +6,10 @@ import com.apace.tcpclientdemo.client.TcpClient;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * Created by Administrator at 2017/8/3
+ * Description: TCP客户端管理工具
+ */
 public class TcpClientManager {
 
     private static Set<TcpClient> sMXTcpClients = new HashSet<>();

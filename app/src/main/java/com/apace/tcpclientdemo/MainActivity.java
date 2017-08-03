@@ -200,9 +200,4 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         handler.sendMessage(message);
 
     }
-
-    @Override
-    public void onValidationFail(TcpClient client, TcpMsg tcpMsg) {
-
-    }
 }

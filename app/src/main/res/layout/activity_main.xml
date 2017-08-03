@@ -22,8 +22,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="192.168.1.69:8989"
-            android:text="192.168.1.69:8989" />
+            android:hint="192.168.1.66:8989"
+            android:text="192.168.1.66:8989" />
     </LinearLayout>
 
     <LinearLayout

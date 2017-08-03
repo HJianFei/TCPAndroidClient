@@ -3,6 +3,10 @@ package com.apace.tcpclientdemo.config;
 
 import com.apace.tcpclientdemo.utils.CharsetUtil;
 
+/**
+ * Created by Administrator at 2017/8/3
+ * Description: TCP连接配置
+ */
 public class TcpConnConfig {
     private String charsetName = CharsetUtil.UTF_8;//默认编码
     private long connTimeout = 5000;//连接超时时间

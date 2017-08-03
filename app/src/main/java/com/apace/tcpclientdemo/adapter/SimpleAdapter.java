@@ -13,9 +13,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by Administrator on 2017/7/25.
+ * Created by Administrator at 2017/8/3
+ * Description: 消息适配器
  */
-
 public class SimpleAdapter extends RecyclerView.Adapter<SimpleAdapter.MyViewHolder> {
 
     private List<String> list = new ArrayList<>();
