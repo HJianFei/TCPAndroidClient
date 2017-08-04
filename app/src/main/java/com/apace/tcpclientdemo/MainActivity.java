@@ -1,12 +1,16 @@
 package com.apace.tcpclientdemo;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -24,7 +28,11 @@ import com.apace.tcpclientdemo.client.TcpClient;
 import com.apace.tcpclientdemo.config.TcpConnConfig;
 import com.apace.tcpclientdemo.listener.TcpClientListener;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
@@ -103,10 +111,37 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Toast.makeText(this, "还没有连接到服务器", Toast.LENGTH_SHORT).show();
             }
         } else if (v.getId() == R.id.tcpclient_bu_send_file) {
-            showFileChooser();
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                // 没有权限。
+                if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_EXTERNAL_STORAGE)) {
+                    // 用户拒绝过这个权限了，应该提示用户，为什么需要这个权限。
+
+                } else {
+                    // 申请授权。
+                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
+                }
+            } else {
+                showFileChooser();
+            }
+
         } else if (v.getId() == R.id.clean) {
             list.clear();
             mAdapter.notifyDataSetChanged();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case 1: {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // 权限被用户同意，可以去放肆了。
+                    showFileChooser();
+                } else {
+                    // 权限被用户拒绝了，洗洗睡吧。
+                }
+                return;
+            }
         }
     }
 
@@ -148,6 +183,34 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
         }
         super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    /**
+     * 文件转字节
+     *
+     * @param filePath
+     * @return
+     */
+    public static byte[] File2byte(String filePath) {
+        byte[] buffer = null;
+        try {
+            File file = new File(filePath);
+            FileInputStream fis = new FileInputStream(file);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            byte[] b = new byte[1024];
+            int n;
+            while ((n = fis.read(b)) != -1) {
+                bos.write(b, 0, n);
+            }
+            fis.close();
+            bos.close();
+            buffer = bos.toByteArray();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return buffer;
     }
 
     public String getPath(Context context, Uri uri) throws URISyntaxException {

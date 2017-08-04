@@ -8,6 +8,7 @@ import com.apace.tcpclientdemo.config.TcpConnConfig;
 import com.apace.tcpclientdemo.listener.TcpClientListener;
 import com.apace.tcpclientdemo.manager.TcpClientManager;
 import com.apace.tcpclientdemo.state.ClientState;
+import com.apace.tcpclientdemo.utils.ByteUtil;
 import com.apace.tcpclientdemo.utils.CharsetUtil;
 
 import java.io.DataOutputStream;
@@ -15,6 +16,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
@@ -255,7 +257,7 @@ public class TcpClient {
 
         setClientState(ClientState.Connected);//标记为已连接
         getSendThread().start();//发送线程
-        getReceiveThread().start();//接收线程
+//        getReceiveThread().start();//接收线程
     }
 
     /**
@@ -342,56 +344,125 @@ public class TcpClient {
                         }
                         if (data != null && data.length > 0) {
                             try {
-                                getSocket().getOutputStream().write(data);
-                                getSocket().getOutputStream().flush();
+                                byte[] buf = new byte[100];
+                                InputStream is = getSocket().getInputStream();
+                                OutputStream os = getSocket().getOutputStream();
+                                byte info_type = 0;
+                                byte[] user_id = ByteUtil.getBytes(123);
+                                String file_name_ = "";
+                                byte[] file_name = ByteUtil.getBytes(file_name_);
+                                file_name = addLen(file_name, 20);
+                                byte[] requestary = new byte[user_id.length + file_name.length + 1 + data.length];
+                                requestary[0] = info_type;
+                                System.arraycopy(user_id, 0, requestary, 1, user_id.length);
+                                System.arraycopy(file_name, 0, requestary, 1 + user_id.length, file_name.length);
+                                System.arraycopy(data, 0, requestary, 1 + user_id.length + file_name.length, data.length);
+                                os.write(requestary);
                                 msg.setTime();
                                 notifySended(msg);
+                                int len = -1;
+                                String result = "";
+                                while ((len = is.read(buf)) != -1) {
+                                    result = new String(buf, 0, len);
+                                    if (result != null && result.length() > 0) {
+                                        break;
+                                    }
+                                }
+                                msg.setTime();
+                                msg.setSourceDataString(result);
+                                notifyReceive(msg);
+                                is.close();
+                                os.close();
+                                getSocket().close();
+
                             } catch (IOException e) {
                                 e.printStackTrace();
                                 onErrorDisConnect("发送消息失败", e);
                                 return;
                             }
                         }
-                    } else {//发送文件
-                        try {
-                            Log.d("onResponse", "文件名称：" + msg.getFile().getName());
-                            Log.d("onResponse", "文件长度：" + msg.getFile().length());
-                            fis = new FileInputStream(msg.getFile());
-                            dos = new DataOutputStream(getSocket().getOutputStream());
-                            //文件名和长度
-                            dos.writeUTF(msg.getFile().getName());
-                            dos.flush();
-                            dos.writeLong(msg.getFile().length());
-                            dos.flush();
-                            //传输文件
-                            byte[] sendBytes = new byte[1024];
-                            int length = 0;
-                            while ((length = fis.read(sendBytes, 0, sendBytes.length)) > 0) {
-                                dos.write(sendBytes, 0, length);
-                                dos.flush();
+                    } else {   //发送文件
+
+                        InputStream is = getSocket().getInputStream();
+                        OutputStream os = getSocket().getOutputStream();
+                        // 用来接受传输过来的字符
+                        byte[] buf = new byte[100];
+                        byte info_type = 1;
+                        byte[] user_id = ByteUtil.getBytes(123);
+                        String file_name_ = msg.getFile().getName();
+                        byte[] file_name = ByteUtil.getBytes(file_name_);
+                        file_name = addLen(file_name, 20);
+                        byte[] requestary = new byte[user_id.length + file_name.length + 1];
+                        requestary[0] = info_type;
+                        System.arraycopy(user_id, 0, requestary, 1, user_id.length);
+                        System.arraycopy(file_name, 0, requestary, 1 + user_id.length, file_name.length);
+                        os.write(requestary);
+                        int len = -1;
+                        String stutus = "";
+                        while ((len = is.read(buf)) != -1) {
+                            stutus = new String(buf, 0, len);
+                            try {
+                                Thread.sleep(10);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            if ("ok".equals(stutus)) {
+                                break;
+                            }
+                        }
+                        if ("ok".equals(stutus)) {
+                            FileInputStream fIn = new FileInputStream(msg.getFile());
+                            int data = -1;
+                            while (-1 != (data = fIn.read())) {
+                                os.write(data);
                             }
                             msg.setSourceDataString(msg.getFile().getName());
                             notifySended(msg);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        } finally {
-                            try {
-                                if (fis != null) {
-                                    fis.close();
-                                }
-                                if (dos != null) {
-                                    dos.close();
-                                }
-                            } catch (IOException e) {
-                                e.printStackTrace();
+//                            while ((len = is.read(buf)) != -1) {
+//                                stutus = new String(buf, 0, len);
+//                                try {
+//                                    Thread.sleep(10);
+//                                } catch (InterruptedException e) {
+//                                    e.printStackTrace();
+//                                }
+//                                if ("file_ok".equals(stutus)) {
+//                                    break;
+//                                }
+//                            }
+                            msg.setSourceDataString(stutus);
+                            notifyReceive(msg);
+                            if (fIn != null) {
+                                fIn.close();
+                            }
+                            if (os != null) {
+                                os.close();
+                            }
+                            if (os != null) {
+                                is.close();
                             }
                         }
+                        getSocket().close();
+
+
                     }
                 }
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
+                Log.d("onResponse",e.toString());
             }
         }
+    }
+
+    public static byte[] addLen(byte[] b, int len) {
+        if (b.length < len) {
+            byte[] retAry = new byte[len];
+            for (int i = 0; i < len - b.length; i++) {
+                retAry[i] = 0;
+            }
+            System.arraycopy(b, 0, retAry, len - b.length, b.length);
+            return retAry;
+        }
+        return b;
     }
 
     /**
@@ -504,8 +575,11 @@ public class TcpClient {
 
     }
 
+    int i = 1;
 
     private void notifyReceive(final TcpMsg tcpMsg) {
+        Log.d("onResponse", ">>>:" + i);
+        i++;
         for (TcpClientListener l : mTcpClientListeners) {
             tcpMsg.setSourceDataString("服务器：" + tcpMsg.getSourceDataString());
             l.onReceive(TcpClient.this, tcpMsg);
