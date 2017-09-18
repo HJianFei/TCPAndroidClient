@@ -81,7 +81,7 @@ public class TcpClient {
      */
     public static TcpClient getTcpClient(Socket socket, TargetInfo targetInfo, TcpConnConfig connConfig) {
         if (!socket.isConnected()) {
-            Log.d("onResponse", "socket is closeed");
+            Log.d("onResponse", "socket is closed");
         }
         TcpClient mTcpClient = new TcpClient();
         mTcpClient.init(targetInfo, connConfig);

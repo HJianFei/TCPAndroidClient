@@ -23,10 +23,12 @@ import com.apace.tcpclientdemo.bean.TcpMsg;
 import com.apace.tcpclientdemo.client.TcpClient;
 import com.apace.tcpclientdemo.config.TcpConnConfig;
 import com.apace.tcpclientdemo.listener.TcpClientListener;
+import com.apace.tcpclientdemo.utils.ByteUtils;
 
 import java.io.File;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, TcpClientListener {
@@ -98,7 +100,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } else if (v.getId() == R.id.tcpclient_bu_send) {//send msg
             String text = tcpclientEdit.getText().toString().trim();
             if (mTcpClient != null) {
-                mTcpClient.sendMsg(text);
+                List<byte[]> sendData = ByteUtils.getSendData(1249537, true, text);
+                for (byte[] b : sendData) {
+                    System.out.println("发送数据："+ Arrays.toString(b));
+                    mTcpClient.sendMsg(b);
+                }
+
             } else {
                 Toast.makeText(this, "还没有连接到服务器", Toast.LENGTH_SHORT).show();
             }
